@@ -25,6 +25,6 @@ CREATE TABLE employee (
   first_name VARCHAR(30),
   last_name VARCHAR(30),
   role_id INT,
-  FOREIGN KEY (role_id) REFERENCES role(id), /* Create a foreign key that links employee table to role table */
+  FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE SET NULL, /* Create a foreign key that links employee table to role table */
   manager_id INT
 );
