@@ -15,6 +15,72 @@ const db = mysql.createConnection(
 
 const updateEmployee = async () => { // update an employee
 
+    // Get all employees for prompt
+    const sql = 'SELECT * FROM employee';
+    db.query(sql, (err, employeeResult) => {
+
+        if(err) throw err;
+
+        // Get all the roles for prompt
+        const sql2 = 'SELECT * FROM role';
+
+        db.query(sql2, (err, roleResult) => {
+
+            if(err) throw err;
+
+            inquirer.prompt([
+                
+                {
+                    type: "list",
+                    name: "employee",
+                    message: "Which employee's role would you like to update?",
+                    choices: () =>
+                    employeeResult.map((employeeResult) => employeeResult.first_name + ' ' + employeeResult.last_name),
+                },
+                {
+                    type: "list",
+                    name: "role",
+                    message: "Which role do you want to assign the selected employee?",
+                    choices: () =>
+                    roleResult.map((roleResult) => roleResult.title),
+                },
+            ])
+            .then((updateMe) => {
+
+                let roleID = 0;
+                //Find that role id
+                for(i = 0; i < roleResult.length; i++){
+                    if(roleResult[i].title == updateMe.role){
+                        roleID = roleResult[i].id;
+                    }
+                }
+
+                let employeeID = 0;
+                //Find that employee id
+                for(i = 0; i < employeeResult.length; i++){
+
+                    let fullName = employeeResult[i].first_name + ' ' + employeeResult[i].last_name; // get full name
+
+                    if(fullName == updateMe.employee){ // compare full names to get id
+                        employeeID = employeeResult[i].id;
+                    }
+                }
+
+                // Now update the role considering we have the information we need
+
+                const sql3 = 'UPDATE employee SET role_id = ? WHERE id = ?';
+
+                db.query(sql3, [roleID, employeeID], (err, result) => {
+                    if(err) throw err;
+
+                    console.log('\n' + updateMe.employee + " has been updated to the role of " + updateMe.role + ".\n");
+
+                    startPrompt(); // start prompt again
+                });
+            });
+        });
+    });
+
 }
 
 const addEmployee = async () => { // add employee
@@ -26,9 +92,9 @@ const addEmployee = async () => { // add employee
         if(err) throw err;
 
         // Get query for list of managers
-    const sql2 = 'SELECT * FROM employee WHERE manager_id IS NOT NULL';
+        const sql2 = 'SELECT * FROM employee WHERE manager_id IS NOT NULL';
 
-       db.query(sql2, (err, managerResult) => {
+        db.query(sql2, (err, managerResult) => {
             if(err) throw err;
 
             inquirer.prompt([
@@ -36,8 +102,8 @@ const addEmployee = async () => { // add employee
                     type: "input",
                     name: "firstName",
                     message: "What is the first name of the new Employee?"
-               },
-               {
+                },
+                {
                     type: "input",
                     name: "lastName",
                     message: "What is the last name of the new Employee?"
@@ -56,8 +122,8 @@ const addEmployee = async () => { // add employee
                     choices: () =>
                     managerResult.map((managerResult) => managerResult.first_name),
                 }
-             ])
-             .then((newEmployee) => {
+            ])
+            .then((newEmployee) => {
 
                 let roleID = 0;
                 //Find that role id
@@ -74,7 +140,7 @@ const addEmployee = async () => { // add employee
                     console.log('\n' + newEmployee.firstName + ' ' + newEmployee.lastName + ' has been be added to the database.\n');
                     startPrompt(); // start prompt again
                 });
-             }); 
+                }); 
         });
     });
 }
