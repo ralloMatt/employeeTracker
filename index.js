@@ -120,7 +120,7 @@ const addEmployee = async () => { // add employee
                     name: "manager",
                     message: "Who is this employees Manager?",
                     choices: () =>
-                    managerResult.map((managerResult) => managerResult.first_name),
+                    managerResult.map((managerResult) => managerResult.first_name + ' ' + managerResult.last_name),
                 }
             ])
             .then((newEmployee) => {
@@ -133,14 +133,26 @@ const addEmployee = async () => { // add employee
                     }
                 }
     
-                const sql = 'INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)';
+                let managerID = 0;
 
-                db.query(sql, [newEmployee.firstName, newEmployee.lastName, roleID],  (err, result) => { // add to employees
+                //Find that manager id
+                for(i = 0; i < managerResult.length; i++){
+
+                    let managerFullName = managerResult[i].first_name + ' ' + managerResult[i].last_name; // get full name
+                    
+                    if(managerFullName == newEmployee.manager){
+                        managerID = managerResult[i].id;
+                    }
+                }
+
+                const sql = 'INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)';
+
+                db.query(sql, [newEmployee.firstName, newEmployee.lastName, roleID, managerID],  (err, result) => { // add to employees
                     if(err) throw err;
                     console.log('\n' + newEmployee.firstName + ' ' + newEmployee.lastName + ' has been be added to the database.\n');
                     startPrompt(); // start prompt again
                 });
-                }); 
+            }); 
         });
     });
 }
