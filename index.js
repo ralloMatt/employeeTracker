@@ -13,79 +13,133 @@ const db = mysql.createConnection(
     console.log(`Connected to the employee_db database.`)
 );
 
-const addEmployee = async () => {
-    const newEmployee = await inquirer.prompt([
-        {
-          type: "input",
-          name: "name",
-          message: "What new Employee will be joining us?"
-       },
-     ]);
-    console.log(newEmployee.name + ' will be added');
-    startPrompt(); // start prompt again
+const updateEmployee = async () => { // update an employee
+
 }
 
-const findDepartmentId = async (department) => {
-    const sql = 'SELECT id FROM department WHERE department_name=' + department; // create query statement
-    let id = 0;
-    console.log(sql);
+const addEmployee = async () => { // add employee
 
-    db.query(sql, (err, result) => {
-        if(err){
-            console.log(err);
-        }  
-        console.log('hi ' + result);
-        
+    // Get query for list of roles
+    const sql = 'SELECT * FROM role';
+
+    db.query(sql, (err, roleResult) => {
+        if(err) throw err;
+
+        // Get query for list of managers
+    const sql2 = 'SELECT * FROM employee WHERE manager_id IS NOT NULL';
+
+       db.query(sql2, (err, managerResult) => {
+            if(err) throw err;
+
+            inquirer.prompt([
+                {
+                    type: "input",
+                    name: "firstName",
+                    message: "What is the first name of the new Employee?"
+               },
+               {
+                    type: "input",
+                    name: "lastName",
+                    message: "What is the last name of the new Employee?"
+                },
+                {
+                    type: "list",
+                    name: "role",
+                    message: "What is the Role of this employee?",
+                    choices: () =>
+                    roleResult.map((roleResult) => roleResult.title),
+                },
+                {
+                    type: "list",
+                    name: "manager",
+                    message: "Who is this employees Manager?",
+                    choices: () =>
+                    managerResult.map((managerResult) => managerResult.first_name),
+                }
+             ])
+             .then((newEmployee) => {
+
+                let roleID = 0;
+                //Find that role id
+                for(i = 0; i < roleResult.length; i++){
+                    if(roleResult[i].title == newEmployee.role){
+                        roleID = roleResult[i].id;
+                    }
+                }
+    
+                const sql = 'INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)';
+
+                db.query(sql, [newEmployee.firstName, newEmployee.lastName, roleID],  (err, result) => { // add to employees
+                    if(err) throw err;
+                    console.log('\n' + newEmployee.firstName + ' ' + newEmployee.lastName + ' has been be added to the database.\n');
+                    startPrompt(); // start prompt again
+                });
+             }); 
+        });
     });
-
-    //console.log('id is ' + id);
-    return id;
 }
 
-const insertRoleIntoDatabase = async (departmentList) => {
-    const newRole = await inquirer.prompt([ // ask questions
-    {
-      type: "input",
-      name: "title",
-      message: "What new Role would you like to create?"
-   },
-   {
-    type: "input",
-    name: "salary",
-    message: "What what is the Salary of this Role?"
-    },
-    {
-        type: "list",
-        name: "department",
-        message: "What what is the Department of this Role?",
-        choices: departmentList
-    }
-    ]);
-
-    const deptId = findDepartmentId(newRole.department);
-    console.log(deptId + ' will be added');
-
-
-
-    //startPrompt();
-}
 
 const addRole = async () => { // add a role
 
     // Get an array of departments
-    const sql = 'SELECT department_name FROM department'; // create query statement
-    const departmentList = [];
+    const sql = 'SELECT * FROM department'; // create query statement
 
     db.query(sql, (err, result) => {
         if(err) throw err;
-        result.forEach((element) =>
-            //console.log(element.department_name)
-            departmentList.push(element.department_name)
-        );
-        insertRoleIntoDatabase(departmentList);
-        
+
+        inquirer.prompt([ // ask questions
+        {
+          type: "input",
+          name: "title",
+          message: "What new Role would you like to create?"
+       },
+       {
+        type: "input",
+        name: "salary",
+        message: "What is the Salary of this Role?"
+        },
+        {
+            type: "list",
+            name: "department",
+            message: "What is the Department of this Role?",
+            choices: () =>
+                result.map((result) => result.department_name),
+        }
+        ])
+        .then((newRole) => {
+            console.log("\n" + newRole.title + " will be added.\n");
+
+
+            //console.log(result);
+           // console.log("ADD TO THIS: " + newRole.department);
+
+            let deptID = 0;
+            //Find that department id
+            for(i = 0; i < result.length; i++){
+                if(result[i].department_name == newRole.department){
+                    deptID = result[i].id;
+                }
+            }
+
+
+            //console.log("DEPT ID is " + deptID);
+
+            // Now we have to add role to database
+
+           // create sql statement
+
+            const sql = 'INSERT INTO role (title, salary, department_id) VALUES (?,?,?)';
+
+            db.query(sql, [newRole.title, newRole.salary, deptID],  (err, result) => { // add to roles
+                if(err) throw err;
+                console.log(newRole.title + ' has been added to database.\n');
+                startPrompt(); // start prompt again
+            });
+        });
     });
 }
+
 const addDepartment = async () => { // add a department
     const newDepartment = await inquirer.prompt([
         {
@@ -99,7 +153,7 @@ const addDepartment = async () => { // add a department
 
     db.query(sql, newDepartment.name, (err, result) => {
         if(err) throw err;
-        console.log(newDepartment.name + ' has been added to database.');
+        console.log('\n' + newDepartment.name + ' has been added to database.\n');
         startPrompt(); // start prompt again
     });
 }
@@ -120,11 +174,11 @@ function viewEmployees(){
 
     db.query(sql, (err, result) => { // applay query
         if(err) throw err;
+        console.log("\n     EMPLOYEES     \n");
         console.table(result); // display results
         startPrompt(); // start prompt again
     });
 
-    return;
 }
 
 function viewRoles(){
@@ -132,11 +186,11 @@ function viewRoles(){
 
     db.query(sql, (err, result) => { // applay query
         if(err) throw err;
+        console.log("\n     ROLES     \n");
         console.table(result); // display results
         startPrompt(); // start prompt again
     });
 
-    return;
 }
 
 function viewDepartments(){
@@ -144,11 +198,10 @@ function viewDepartments(){
 
     db.query(sql, (err, result) => { // applay query
         if(err) throw err;
+        console.log("\n     DEPARTMENTS     \n");
         console.table(result); // display results
         startPrompt(); // start prompt again
     });
-
-    return;
 }
 
 const askForInput = () => { // See what user wants to view or change
@@ -160,10 +213,6 @@ const askForInput = () => { // See what user wants to view or change
             choices: ['View all departments', 'View all roles', 'View all employees', 'Add a department', 'Add a role', 'Add an employee','Update an employee role', 'Exit']
         }
     ]);
-}
-
-function endProgram() {  // used to end program
-    db.end(); // close connection to database
 }
 
 function startPrompt() { // Initialize the app
@@ -191,11 +240,11 @@ function startPrompt() { // Initialize the app
                     addEmployee();
                     break;
                 case 'Update an employee role':
-                    
+                    updateEmployee();
                     break;
                 case 'Exit':
-                    console.log("See ya next time.");
-                    endProgram(); // used to end program
+                    console.log("\nSee ya next time.\n");
+                    db.end(); // close connection to database
                     break;
                 default:
                     console.log("Something went wrong...");
@@ -203,6 +252,6 @@ function startPrompt() { // Initialize the app
         });
 }
 
-
+console.log("\n**************   EMPLOYEE MANAGER   **************\n")
 // Function call to initialize app
 startPrompt();
